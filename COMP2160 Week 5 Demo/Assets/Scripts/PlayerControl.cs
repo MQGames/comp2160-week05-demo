@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using TMPro;
 
 public class PlayerControl : MonoBehaviour
 {
@@ -17,12 +18,19 @@ public class PlayerControl : MonoBehaviour
     private LayerMask enemyLayerMask;
     [SerializeField]
     private ParticleSystem explosionPrefab;
+    [SerializeField]
+    private int scorePerKill = 10;
+    [SerializeField]
+    private string scoreFormat = "Score: {0}";
+    [SerializeField]
+    private TMP_Text scoreText;
 
     private bool laserFiring = false;
     private bool laserEnding = false;
     private float laserDistance = 0;
     private float laserHitDistance = 0;
     private GameObject laserTarget;
+    private int score = 0;
 
     private Actions actions;
     private InputAction forwardAction;
@@ -90,6 +98,8 @@ public class PlayerControl : MonoBehaviour
                     var particles = Instantiate(explosionPrefab);
                     particles.transform.position = laserTarget.transform.position;
                     Destroy(laserTarget);
+                    score += scorePerKill;
+                    scoreText.text = string.Format(scoreFormat, score);
                 }
             }
 
