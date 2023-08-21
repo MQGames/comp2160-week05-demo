@@ -121,16 +121,24 @@ public class PlayerControl : MonoBehaviour
             var hit = Physics2D.Raycast(origin, direction, laserMaxDistance, enemyLayerMask); 
             if (hit.collider == null)
             {                
-                Debug.Log("hit = null");
                 laserHitDistance = laserMaxDistance;
                 laserTarget = null;
             }
             else
             {
-                Debug.Log($"hit = {hit.collider.gameObject.name}");
                 laserHitDistance = hit.distance;
                 laserTarget = hit.collider.gameObject;
             }
+        }
+    }
+
+    void OnTriggerEnter2D(Collider2D collider) 
+    {
+        if (collider.gameObject.CompareTag("Enemy"))
+        {
+            var particles = Instantiate(explosionPrefab);
+            particles.transform.position = transform.position;
+            Destroy(gameObject);
         }
     }
 }
