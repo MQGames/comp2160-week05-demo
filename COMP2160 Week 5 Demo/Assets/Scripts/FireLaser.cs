@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[RequireComponent(typeof(LineRenderer))]
 public class FireLaser : MonoBehaviour
 {
     [SerializeField] private float maxDistance = 5;
@@ -11,19 +12,24 @@ public class FireLaser : MonoBehaviour
     [SerializeField] private ParticleSystem explosionPrefab;
     [SerializeField] private Scorekeeper scorekeeper;
 
-    private bool firing = false;
-    private bool ending = false;
+    private enum State { 
+        Waiting, Growing, Shrinking
+    }
+    private State state = State.Waiting;
     private float distance = 0;
     private float hitDistance = 0;
     private GameObject target;
 
     private Actions actions;
     private InputAction shootAction;
+    private LineRenderer lineRenderer;
 
     void Awake()
     {
         actions = new Actions();
         shootAction = actions.playerMovement.shoot;
+
+        lineRenderer = GetComponent<LineRenderer>();
     }
 
     void OnEnable()
@@ -36,60 +42,31 @@ public class FireLaser : MonoBehaviour
         actions?.playerMovement.Disable();
     }
 
-    void Update()
+    void Update()    
     {
-        // The end of the laser beam catches up with the start
+        // Refactored update to make the FSM explicit
 
-        if (ending)
+        switch (state) 
         {
-            distance += speed * Time.deltaTime;
-            if (distance >= hitDistance) 
-            {
-                distance = hitDistance;
-                ending = false;
-            }
+            case State.Waiting:
+                DoWait();
+                break;
 
-            Vector3 start = transform.TransformPoint(distance * Vector3.up);
-            Vector3 end = transform.TransformPoint(hitDistance * Vector3.up);
-            var lineRenderer = GetComponent<LineRenderer>();
-            lineRenderer.SetPosition(0, start);
-            lineRenderer.SetPosition(1, end);
+            case State.Growing:
+                DoGrow();
+                break;
+
+            case State.Shrinking:
+                DoShrink();
+                break;
         }
+    }
 
-        // The start of the laser beam is moving towards the target
-
-        if (firing)
+    private void DoWait()
+    {
+        if (shootAction.WasPressedThisFrame()) 
         {
-            distance += speed * Time.deltaTime;
-            if (distance >= hitDistance)
-            {
-                // hit the target
-                distance = 0;
-                firing = false;
-                ending = true;
-                
-                // if we hit an enemy, make it explode
-                if (target != null)
-                {
-                    var particles = Instantiate(explosionPrefab);
-                    particles.transform.position = target.transform.position;
-                    Destroy(target);
-
-                    scorekeeper.KilledEnemy();
-                }
-            }
-
-            Vector3 start = transform.TransformPoint(0 * Vector3.up);
-            Vector3 end = transform.TransformPoint(distance * Vector3.up);
-            var lineRenderer = GetComponent<LineRenderer>();
-            lineRenderer.SetPosition(0, start);
-            lineRenderer.SetPosition(1, end);
-        }
-        
-        // if the player presses shoot, start the laser
-        if (shootAction.WasPressedThisFrame() && !firing && !ending) 
-        {
-            firing = true;
+            state = State.Growing;
             distance = 0;
 
             Vector2 origin = transform.position;
@@ -109,4 +86,52 @@ public class FireLaser : MonoBehaviour
         }
 
     }
+
+    private void DoGrow()
+    {
+        // The start of the laser beam is moving towards the target
+
+        distance += speed * Time.deltaTime;
+        if (distance >= hitDistance)
+        {
+            // hit the target
+            distance = 0;
+            state = State.Shrinking;
+            
+            // if we hit an enemy, make it explode
+            if (target != null)
+            {
+                var particles = Instantiate(explosionPrefab);
+                particles.transform.position = target.transform.position;
+                Destroy(target);
+
+                scorekeeper.KilledEnemy();
+            }
+        }
+
+        DrawLaser(0, distance);
+    }
+
+    private void DoShrink()
+    {
+        distance += speed * Time.deltaTime;
+        if (distance >= hitDistance) 
+        {
+            distance = hitDistance;
+            state = State.Waiting;
+        }
+
+        DrawLaser(distance, hitDistance);
+    }
+
+    private void DrawLaser(float startDistance, float endDistance) 
+    {
+        // calculate start and end points in the local coordinate space of the ship
+        // then tranform them into world coordinates for the line renderer
+        Vector3 start = transform.TransformPoint(startDistance * Vector3.up);
+        Vector3 end = transform.TransformPoint(endDistance * Vector3.up);
+        lineRenderer.SetPosition(0, start);
+        lineRenderer.SetPosition(1, end);
+    }
+
 }
