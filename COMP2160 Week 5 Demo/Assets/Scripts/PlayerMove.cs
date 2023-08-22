@@ -48,11 +48,9 @@ public class PlayerMove : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D collider) 
     {
-        if (collider.gameObject.CompareTag("Enemy"))
-        {
-            var particles = Instantiate(explosionPrefab);
-            particles.transform.position = transform.position;
-            Destroy(gameObject);
-        }
+        // player can only collide with enemies (due to physics manager settings)
+        var particles = Instantiate(explosionPrefab);
+        particles.transform.position = transform.position;
+        Destroy(gameObject);
     }
 }
